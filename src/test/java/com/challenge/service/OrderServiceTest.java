@@ -26,36 +26,60 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
-    @Mock private OrderRepository orderRepository;
-    @Mock private ProductRepository productRepository;
-    @Mock private UserRepository userRepository;
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private ProductRepository productRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private OrderService orderService;
 
+    private User testUser;
     private Product keyboard;
     private Product mouse;
 
     @BeforeEach
     void setUp() {
-        User user = new User("John Doe", "john.doe@example.com");
-        user.setId(1L);
-        keyboard = product(10L, "49.99", 5);
-        mouse = product(20L, "19.50", 10);
+        testUser = new User("John Doe", "john.doe@example.com");
+        testUser.setId(1L);
 
-        lenient().when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        lenient().when(productRepository.findById(10L)).thenReturn(Optional.of(keyboard));
-        lenient().when(productRepository.findById(20L)).thenReturn(Optional.of(mouse));
-        lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        keyboard = new Product();
+        keyboard.setId(10L);
+        keyboard.setName("Keyboard");
+        keyboard.setCategory("Electronics");
+        keyboard.setPrice(new BigDecimal("49.99"));
+        keyboard.setStockQuantity(5);
+
+        mouse = new Product();
+        mouse.setId(20L);
+        mouse.setName("Mouse");
+        mouse.setCategory("Electronics");
+        mouse.setPrice(new BigDecimal("19.50"));
+        mouse.setStockQuantity(10);
     }
 
     @Test
-    void createOrder_calculatesTotalAndReservesStock() {
-        Order order = orderService.createOrder(new CreateOrderRequest(1L, List.of(
-            new CreateOrderRequest.Item(10L, 2, new BigDecimal("49.99")),
-            new CreateOrderRequest.Item(20L, 1, new BigDecimal("19.50")))));
+    void createOrder_ShouldCalculateTotalAndReserveStock() {
+        // Given
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(productRepository.findById(10L)).thenReturn(Optional.of(keyboard));
+        when(productRepository.findById(20L)).thenReturn(Optional.of(mouse));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        CreateOrderRequest request = new CreateOrderRequest(1L, List.of(
+            new CreateOrderRequest.Item(10L, 2, new BigDecimal("49.99")),
+            new CreateOrderRequest.Item(20L, 1, new BigDecimal("19.50"))));
+
+        // When
+        Order order = orderService.createOrder(request);
+
+        // Then
         assertEquals(OrderStatus.CONFIRMED, order.getStatus());
+        assertEquals(2, order.getItems().size());
         assertEquals(0, new BigDecimal("119.48").compareTo(order.getTotalAmount()));
         assertEquals(3, keyboard.getStockQuantity());
         assertEquals(9, mouse.getStockQuantity());
@@ -63,30 +87,38 @@ class OrderServiceTest {
     }
 
     @Test
-    void createOrder_insufficientStock_throws() {
+    void createOrder_WhenInsufficientStock_ShouldThrowException() {
+        // Given
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(productRepository.findById(10L)).thenReturn(Optional.of(keyboard));
+
         CreateOrderRequest request = new CreateOrderRequest(1L, List.of(
             new CreateOrderRequest.Item(10L, 6, new BigDecimal("49.99"))));
 
+        // When & Then
         assertThrows(RuntimeException.class, () -> orderService.createOrder(request));
         verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test
-    void cancelOrder_deletesOrder() {
+    void cancelOrder_WhenOrderExists_ShouldDeleteOrder() {
+        // Given
         when(orderRepository.existsById(5L)).thenReturn(true);
 
+        // When
         orderService.cancelOrder(5L);
 
-        verify(orderRepository).deleteById(5L);
+        // Then
+        verify(orderRepository, times(1)).deleteById(5L);
     }
 
-    private static Product product(Long id, String price, int stock) {
-        Product product = new Product();
-        product.setId(id);
-        product.setName("Product " + id);
-        product.setCategory("Electronics");
-        product.setPrice(new BigDecimal(price));
-        product.setStockQuantity(stock);
-        return product;
+    @Test
+    void cancelOrder_WhenOrderDoesNotExist_ShouldThrowException() {
+        // Given
+        when(orderRepository.existsById(99L)).thenReturn(false);
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> orderService.cancelOrder(99L));
+        verify(orderRepository, never()).deleteById(any());
     }
 }

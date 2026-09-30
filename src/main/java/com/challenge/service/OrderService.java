@@ -34,23 +34,22 @@ public class OrderService {
 
     public Order createOrder(CreateOrderRequest request) {
         User user = userRepository.findById(request.userId()).get();
-        log.info("Creating order for {} ({}) with {} items",
-            user.getName(), user.getEmail(), request.items().size());
+        log.info("Creating order for user {}", user.getEmail());
 
         Order order = new Order();
         order.setUser(user);
         order.setOrderDate(LocalDateTime.now());
         order.setStatus(OrderStatus.PENDING);
 
-        double total = 0;
         for (CreateOrderRequest.Item itemRequest : request.items()) {
             Product product = productRepository.findById(itemRequest.productId()).get();
             reserveStock(product, itemRequest.quantity());
-
             order.getItems().add(new OrderItem(order, product, itemRequest.quantity(), itemRequest.unitPrice()));
-            total += itemRequest.unitPrice().doubleValue() * itemRequest.quantity();
         }
 
+        double total = order.getItems().stream()
+            .mapToDouble(item -> item.getSubtotal().doubleValue())
+            .sum();
         order.setTotalAmount(BigDecimal.valueOf(total));
         order.setStatus(OrderStatus.CONFIRMED);
         return orderRepository.save(order);

@@ -28,6 +28,9 @@ public class Wallet {
     @Column(name = "balance_minor", nullable = false)
     private long balanceMinor;
 
+    @Column(name = "daily_transfer_limit_minor", nullable = false)
+    private long dailyTransferLimitMinor = 100_000;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -81,6 +84,10 @@ public class Wallet {
 
     public void setBalanceMinor(long balanceMinor) {
         this.balanceMinor = balanceMinor;
+    }
+
+    public long getDailyTransferLimitMinor() {
+        return dailyTransferLimitMinor;
     }
 
     public Instant getCreatedAt() {

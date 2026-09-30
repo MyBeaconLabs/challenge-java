@@ -5,8 +5,8 @@ INSERT INTO users (name, email) VALUES
     ('Bob Johnson', 'bob.johnson@example.com')
 ON CONFLICT (email) DO NOTHING;
 
-INSERT INTO wallets (user_id, type, currency)
-SELECT u.id, 'USER', c.currency
+INSERT INTO wallets (user_id, type, currency, daily_transfer_limit_minor)
+SELECT u.id, 'USER', c.currency, 100000
 FROM users u
 CROSS JOIN (VALUES ('USD'), ('EUR')) AS c (currency)
 WHERE u.email IN ('john.doe@example.com', 'jane.smith@example.com', 'bob.johnson@example.com')

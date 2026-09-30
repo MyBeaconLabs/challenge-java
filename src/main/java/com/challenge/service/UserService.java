@@ -1,50 +1,55 @@
 package com.challenge.service;
 
-import com.challenge.dto.CreateUserRequest;
 import com.challenge.entity.User;
-import com.challenge.exception.ConflictException;
-import com.challenge.exception.NotFoundException;
 import com.challenge.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
-
+    
     private final UserRepository userRepository;
-
+    
+    @Autowired
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
-
-    @Transactional(readOnly = true)
+    
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
-
-    @Transactional(readOnly = true)
-    public User getUser(Long id) {
-        return userRepository.findById(id)
-            .orElseThrow(() -> new NotFoundException("User not found: " + id));
+    
+    public Optional<User> getUserById(Long id) {
+        return userRepository.findById(id);
     }
-
-    @Transactional
-    public User createUser(CreateUserRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new ConflictException("A user with this email already exists");
+    
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+    
+    public User createUser(User user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("User with email " + user.getEmail() + " already exists");
         }
-        return userRepository.save(new User(request.name(), request.email()));
+        return userRepository.save(user);
     }
-
-    @Transactional
-    public User updateUser(Long id, CreateUserRequest request) {
-        User user = getUser(id);
-        if (!user.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
-            throw new ConflictException("A user with this email already exists");
+    
+    public User updateUser(Long id, User userDetails) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        
+        user.setName(userDetails.getName());
+        user.setEmail(userDetails.getEmail());
+        
+        return userRepository.save(user);
+    }
+    
+    public void deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new RuntimeException("User not found with id: " + id);
         }
-        user.setName(request.name());
-        user.setEmail(request.email());
-        return user;
+        userRepository.deleteById(id);
     }
-}
+} 

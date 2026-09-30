@@ -1,96 +1,258 @@
-# Wallet Service
+# Java Spring Boot Challenge
 
-A small Spring Boot service that holds user wallets and moves money between them
-through a double-entry ledger.
+This is a Java code challenge using Spring Boot with PostgreSQL database. The application provides a REST API for managing users.
 
-## Quick start
+## 🚀 Quick Start
 
-Prerequisites: Java 17+, Maven 3.9+, Docker.
+### Prerequisites
+- Java 17 or higher
+- Maven 3.6+
+- Docker and Docker Compose
 
+### Setup Instructions
+
+#### Option 1: Using the setup script (Recommended)
 ```bash
-make start     # Postgres on localhost:5432
-make run       # app on http://localhost:8080 (Flyway migrates and seeds on startup)
-make test      # full test suite; uses Testcontainers, so Docker must be running
+# Clone the repository
+git clone <repository-url>
+cd challenge-java
+
+# Run the setup script
+./setup.sh
 ```
 
-If you have an old `challenge_postgres` volume from a previous version, run `make reset-db` first.
+#### Option 2: Manual setup
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd challenge-java
+   ```
 
-## Domain
+2. **Start the PostgreSQL database**
+   ```bash
+   docker-compose up -d
+   ```
+   This will start PostgreSQL on port 5432 with the following credentials:
+   - Database: `challenge_db`
+   - Username: `challenge_user`
+   - Password: `challenge_password`
 
-| Concept | Table | Notes |
-|---|---|---|
-| User | `users` | |
-| Wallet | `wallets` | One per user per currency. `USER` wallets can never go negative. One `SYSTEM` wallet per currency funds deposits. |
-| Ledger transaction | `ledger_transactions` | One per money movement. Unique on `(type, idempotency_key)`. |
-| Ledger entry | `ledger_entries` | Signed amounts; the entries of a transaction always sum to zero. |
+3. **Run the Spring Boot application**
+   ```bash
+   mvn spring-boot:run
+   ```
+   The application will start on `http://localhost:8080`
 
-### Money
+4. **Verify the setup**
+   ```bash
+   curl http://localhost:8080/api/users
+   ```
 
-- Amounts are stored as `BIGINT` **minor units** (cents for USD, yen for JPY). Never floating point.
-- The API accepts and returns decimal amounts in major units (e.g. `12.50`). Convert with
-  `com.challenge.util.Money`, which knows each currency's decimal places and rejects
-  amounts with too much precision instead of rounding.
-- Supported currencies: USD, EUR, JPY.
-
-### Moving money
-
-`LedgerService.post(Posting)` is the **only** code path that changes a balance. Every posting is:
-
-- **atomic**: entries and balance updates commit together or not at all
-- **idempotent**: reposting the same `(type, idempotencyKey)` returns the original transaction
-- **balanced**: legs must sum to zero
-- **single-currency**: all wallets in a posting share a currency
-- **safe under concurrency**: wallets are locked `FOR UPDATE` in id order, so concurrent postings
-  neither lose updates nor deadlock
-- **non-overdrawing**: a `USER` wallet's balance never goes below zero (also enforced by a DB check)
-
-`wallets.balance_minor` is a cache of the wallet's ledger entries and must always equal
-`SUM(ledger_entries.amount_minor)` for that wallet.
-
-## API
-
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/api/users` | |
-| GET | `/api/users/{id}` | |
-| GET | `/api/users/{id}/wallets` | |
-| POST | `/api/users` | `{"name": "...", "email": "..."}` |
-| PUT | `/api/users/{id}` | |
-| POST | `/api/wallets` | `{"userId": 1, "currency": "USD"}` |
-| GET | `/api/wallets/{id}` | |
-| GET | `/api/wallets/{id}/entries?limit=50` | Most recent first |
-| POST | `/api/wallets/{id}/deposits` | Internal (funding pipeline). Requires `Idempotency-Key` header. `{"amount": 25.00}` |
-| GET | `/health` | |
-
-Errors are returned as RFC 7807 problem details (`application/problem+json`).
-
+#### Option 3: Using Makefile commands
 ```bash
-curl -X POST localhost:8080/api/wallets/1/deposits \
-  -H 'Content-Type: application/json' -H 'Idempotency-Key: dep-123' \
-  -d '{"amount": 25.00}'
+# Set up everything
+make setup
+
+# Or use individual commands
+make start    # Start database
+make build    # Build application
+make run      # Run application
+make test     # Run tests
+make health   # Check application health
+make help     # Show all available commands
 ```
 
-## Project layout
+## 📋 Challenge Requirements
+
+### Current Implementation
+The application currently includes:
+- ✅ Spring Boot 3.2.0 with Java 17
+- ✅ PostgreSQL database with Docker Compose
+- ✅ JPA/Hibernate for database operations
+- ✅ REST API with CRUD operations for Users
+- ✅ Input validation
+- ✅ Basic error handling
+
+### Challenge Tasks
+
+#### Task 1: Add Product Management
+Create a new `Product` entity with the following fields:
+- `id` (Long, primary key)
+- `name` (String, required)
+- `description` (String)
+- `price` (BigDecimal, required)
+- `category` (String, required)
+- `stockQuantity` (Integer, required)
+- `createdAt` (LocalDateTime)
+- `updatedAt` (LocalDateTime)
+
+Implement:
+- Product entity with proper JPA annotations
+- ProductRepository interface
+- ProductService with business logic
+- ProductController with REST endpoints
+- Add validation for price (must be positive) and stockQuantity (must be non-negative)
+
+#### Task 2: Implement Order Management
+Create an `Order` system with:
+- `Order` entity with:
+  - `id` (Long, primary key)
+  - `userId` (Long, foreign key to User)
+  - `orderDate` (LocalDateTime)
+  - `status` (OrderStatus enum: PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED)
+  - `totalAmount` (BigDecimal)
+  - `createdAt` (LocalDateTime)
+  - `updatedAt` (LocalDateTime)
+
+- `OrderItem` entity with:
+  - `id` (Long, primary key)
+  - `orderId` (Long, foreign key to Order)
+  - `productId` (Long, foreign key to Product)
+  - `quantity` (Integer)
+  - `unitPrice` (BigDecimal)
+  - `subtotal` (BigDecimal)
+
+Implement:
+- Proper relationships between entities
+- Order and OrderItem repositories
+- Order service with business logic for creating orders
+- Order controller with endpoints for creating and retrieving orders
+- Validation to ensure order items have valid products and quantities
+
+#### Task 3: Add Advanced Features
+Implement the following advanced features:
+
+1. **Search and Filtering**
+   - Add search functionality to find products by name or description
+   - Add filtering by category and price range
+   - Add pagination support for large datasets
+
+2. **Exception Handling**
+   - Create custom exceptions (ProductNotFoundException, OrderNotFoundException, etc.)
+   - Implement a global exception handler
+   - Return proper HTTP status codes and error messages
+
+3. **Data Transfer Objects (DTOs)**
+   - Create DTOs for request/response objects
+   - Implement mapping between entities and DTOs
+   - Use DTOs in controllers instead of entities
+
+4. **Unit Tests**
+   - Write unit tests for services
+   - Write integration tests for controllers
+   - Achieve at least 80% code coverage
+
+#### Task 4: Bonus Features (Optional)
+- Implement user authentication and authorization
+- Add API documentation using Swagger/OpenAPI
+- Implement caching for frequently accessed data
+- Add logging with different levels
+- Create database migrations using Flyway or Liquibase
+
+## 🛠️ API Endpoints
+
+### Users
+- `GET /api/users` - Get all users
+- `GET /api/users/{id}` - Get user by ID
+- `GET /api/users/email/{email}` - Get user by email
+- `POST /api/users` - Create new user
+- `PUT /api/users/{id}` - Update user
+- `DELETE /api/users/{id}` - Delete user
+
+### Example Requests
+
+**Create a user:**
+```bash
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john.doe@example.com"
+  }'
+```
+
+**Get all users:**
+```bash
+curl http://localhost:8080/api/users
+```
+
+## 🗄️ Database Schema
+
+The application uses PostgreSQL with the following initial schema:
+
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## 🧪 Testing
+
+Run tests with:
+```bash
+mvn test
+```
+
+## 📁 Project Structure
 
 ```
-src/main/java/com/challenge/
-├── controller/   REST endpoints
-├── dto/          request/response records
-├── entity/       JPA entities
-├── exception/    domain exceptions + GlobalExceptionHandler
-├── repository/   Spring Data repositories
-├── service/      LedgerService, WalletService, UserService
-└── util/         Money
-src/main/resources/db/
-├── migration/    Flyway schema migrations (V1, V2, ...)
-└── seed/         local dev data (not loaded by tests)
+src/
+├── main/
+│   ├── java/com/challenge/
+│   │   ├── JavaChallengeApplication.java
+│   │   ├── controller/
+│   │   │   └── UserController.java
+│   │   ├── entity/
+│   │   │   └── User.java
+│   │   ├── repository/
+│   │   │   └── UserRepository.java
+│   │   └── service/
+│   │       └── UserService.java
+│   └── resources/
+│       └── application.yml
+└── test/
+    └── java/com/challenge/
+        └── JavaChallengeApplicationTests.java
 ```
 
-## Conventions
+## 🐳 Docker
 
-- Schema changes go through a new Flyway migration; never edit an applied one.
-  Hibernate runs with `ddl-auto: validate`.
-- Controllers speak DTOs, never entities.
-- Throw the domain exceptions in `exception/`; `GlobalExceptionHandler` maps them to status codes.
-- Anything that moves money goes through `LedgerService`.
-- Integration tests extend `IntegrationTest` and run against a real Postgres container.
+The project includes Docker Compose for easy database setup:
+
+```yaml
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: challenge_db
+      POSTGRES_USER: challenge_user
+      POSTGRES_PASSWORD: challenge_password
+    ports:
+      - "5432:5432"
+```
+
+## 📝 Notes
+
+- The application uses Hibernate's `ddl-auto: update` for automatic schema generation
+- SQL queries are logged for debugging purposes
+- The application includes devtools for hot reloading during development
+- CORS is enabled for all origins (configure appropriately for production)
+
+## 🎯 Evaluation Criteria
+
+Your solution will be evaluated based on:
+- Code quality and organization
+- Proper use of Spring Boot features
+- Database design and relationships
+- API design and RESTful principles
+- Error handling and validation
+- Test coverage
+- Documentation
+- Performance considerations
+
+Good luck with the challenge! 🚀 

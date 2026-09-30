@@ -77,5 +77,3 @@ Thumbs.db
 application-local.yml
 application-dev.yml
 application-prod.yml 
-# Interviewer-only material (never commit)
-interviewer/

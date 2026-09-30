@@ -1,19 +1,20 @@
 package com.challenge.service;
 
+import com.challenge.dto.CreateUserRequest;
 import com.challenge.entity.User;
+import com.challenge.exception.ConflictException;
+import com.challenge.exception.NotFoundException;
 import com.challenge.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -26,80 +27,31 @@ class UserServiceTest {
     @InjectMocks
     private UserService userService;
 
-    private User testUser;
+    private final CreateUserRequest request = new CreateUserRequest("John Doe", "john.doe@example.com");
 
-    @BeforeEach
-    void setUp() {
-        testUser = new User();
-        testUser.setId(1L);
-        testUser.setName("John Doe");
-        testUser.setEmail("john.doe@example.com");
+    @Test
+    void createUser_savesNewUser() {
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User created = userService.createUser(request);
+
+        assertThat(created.getEmail()).isEqualTo(request.email());
+        verify(userRepository).save(any(User.class));
     }
 
     @Test
-    void getAllUsers_ShouldReturnAllUsers() {
-        // Given
-        List<User> expectedUsers = Arrays.asList(testUser);
-        when(userRepository.findAll()).thenReturn(expectedUsers);
+    void createUser_rejectsDuplicateEmail() {
+        when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
-        // When
-        List<User> actualUsers = userService.getAllUsers();
-
-        // Then
-        assertEquals(expectedUsers, actualUsers);
-        verify(userRepository, times(1)).findAll();
-    }
-
-    @Test
-    void getUserById_WhenUserExists_ShouldReturnUser() {
-        // Given
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-
-        // When
-        Optional<User> actualUser = userService.getUserById(1L);
-
-        // Then
-        assertTrue(actualUser.isPresent());
-        assertEquals(testUser, actualUser.get());
-        verify(userRepository, times(1)).findById(1L);
-    }
-
-    @Test
-    void getUserById_WhenUserDoesNotExist_ShouldReturnEmpty() {
-        // Given
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // When
-        Optional<User> actualUser = userService.getUserById(999L);
-
-        // Then
-        assertFalse(actualUser.isPresent());
-        verify(userRepository, times(1)).findById(999L);
-    }
-
-    @Test
-    void createUser_WhenEmailDoesNotExist_ShouldCreateUser() {
-        // Given
-        when(userRepository.existsByEmail(testUser.getEmail())).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        // When
-        User createdUser = userService.createUser(testUser);
-
-        // Then
-        assertEquals(testUser, createdUser);
-        verify(userRepository, times(1)).existsByEmail(testUser.getEmail());
-        verify(userRepository, times(1)).save(testUser);
-    }
-
-    @Test
-    void createUser_WhenEmailExists_ShouldThrowException() {
-        // Given
-        when(userRepository.existsByEmail(testUser.getEmail())).thenReturn(true);
-
-        // When & Then
-        assertThrows(RuntimeException.class, () -> userService.createUser(testUser));
-        verify(userRepository, times(1)).existsByEmail(testUser.getEmail());
+        assertThatThrownBy(() -> userService.createUser(request)).isInstanceOf(ConflictException.class);
         verify(userRepository, never()).save(any(User.class));
     }
-} 
+
+    @Test
+    void getUser_throwsWhenMissing() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getUser(99L)).isInstanceOf(NotFoundException.class);
+    }
+}

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Setting up Java Challenge Environment..."
+echo "🚀 Setting up Wallet Service environment..."
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
@@ -57,9 +57,9 @@ if [ $? -eq 0 ]; then
     echo "   mvn spring-boot:run"
     echo ""
     echo "📋 The application will be available at: http://localhost:8080"
-    echo "📋 API documentation: http://localhost:8080/api/users"
+    echo "📋 Try: curl http://localhost:8080/api/users/1/wallets"
     echo ""
-    echo "📖 Check the README.md file for challenge instructions and API examples."
+    echo "📖 See README.md for the domain and API."
 else
     echo "❌ Build failed. Please check the error messages above."
     exit 1

@@ -1,4 +1,4 @@
-.PHONY: help setup start stop test clean build run
+.PHONY: help setup start stop reset-db test clean build run
 
 # Default target
 help:
@@ -6,6 +6,7 @@ help:
 	@echo "  setup    - Set up the development environment"
 	@echo "  start    - Start the PostgreSQL database"
 	@echo "  stop     - Stop the PostgreSQL database"
+	@echo "  reset-db - Stop the database and delete its data"
 	@echo "  build    - Build the application"
 	@echo "  run      - Run the Spring Boot application"
 	@echo "  test     - Run tests"
@@ -30,6 +31,10 @@ stop:
 	@echo "🛑 Stopping PostgreSQL database..."
 	docker-compose down
 	@echo "✅ Database stopped!"
+
+# Drop all local data (Flyway recreates the schema on next run)
+reset-db:
+	docker-compose down -v
 
 # Build the application
 build:
@@ -62,16 +67,7 @@ health:
 	@echo "🏥 Checking application health..."
 	@curl -s http://localhost:8080/health | jq . 2>/dev/null || curl -s http://localhost:8080/health
 
-# API test
+# API smoke test
 api-test:
-	@echo "🧪 Testing API endpoints..."
-	@echo "GET /api/users:"
-	@curl -s http://localhost:8080/api/users | jq . 2>/dev/null || curl -s http://localhost:8080/api/users
-	@echo ""
-	@echo "POST /api/users:"
-	@curl -X POST http://localhost:8080/api/users \
-		-H "Content-Type: application/json" \
-		-d '{"name":"Test User","email":"test@example.com"}' \
-		-s | jq . 2>/dev/null || curl -X POST http://localhost:8080/api/users \
-		-H "Content-Type: application/json" \
-		-d '{"name":"Test User","email":"test@example.com"}' -s 
+	@curl -s http://localhost:8080/api/users; echo
+	@curl -s http://localhost:8080/api/users/1/wallets; echo

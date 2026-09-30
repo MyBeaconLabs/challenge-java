@@ -1,74 +1,51 @@
 package com.challenge.controller;
 
-import com.challenge.entity.User;
+import com.challenge.dto.CreateUserRequest;
+import com.challenge.dto.UserResponse;
+import com.challenge.dto.WalletResponse;
 import com.challenge.service.UserService;
+import com.challenge.service.WalletService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "*")
 public class UserController {
-    
+
     private final UserService userService;
-    
-    @Autowired
-    public UserController(UserService userService) {
+    private final WalletService walletService;
+
+    public UserController(UserService userService, WalletService walletService) {
         this.userService = userService;
+        this.walletService = walletService;
     }
-    
+
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
+    public List<UserResponse> getAllUsers() {
+        return userService.getAllUsers().stream().map(UserResponse::from).toList();
     }
-    
+
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        Optional<User> user = userService.getUserById(id);
-        return user.map(ResponseEntity::ok)
-                  .orElse(ResponseEntity.notFound().build());
+    public UserResponse getUser(@PathVariable Long id) {
+        return UserResponse.from(userService.getUser(id));
     }
-    
-    @GetMapping("/email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
-        Optional<User> user = userService.getUserByEmail(email);
-        return user.map(ResponseEntity::ok)
-                  .orElse(ResponseEntity.notFound().build());
+
+    @GetMapping("/{id}/wallets")
+    public List<WalletResponse> getWallets(@PathVariable Long id) {
+        userService.getUser(id);
+        return walletService.getWalletsForUser(id).stream().map(WalletResponse::from).toList();
     }
-    
+
     @PostMapping
-    public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
-        try {
-            User createdUser = userService.createUser(user);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
+        return UserResponse.from(userService.createUser(request));
     }
-    
+
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody User userDetails) {
-        try {
-            User updatedUser = userService.updateUser(id, userDetails);
-            return ResponseEntity.ok(updatedUser);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public UserResponse updateUser(@PathVariable Long id, @Valid @RequestBody CreateUserRequest request) {
+        return UserResponse.from(userService.updateUser(id, request));
     }
-    
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        try {
-            userService.deleteUser(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-} 
+}

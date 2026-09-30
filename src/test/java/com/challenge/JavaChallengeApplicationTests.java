@@ -1,13 +1,10 @@
 package com.challenge;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class JavaChallengeApplicationTests {
+class JavaChallengeApplicationTests extends IntegrationTest {
 
     @Test
     void contextLoads() {
-        // This test verifies that the Spring application context loads successfully
     }
-} 
+}

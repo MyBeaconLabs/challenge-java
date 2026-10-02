@@ -33,7 +33,7 @@ public class OrderService {
     }
 
     public Order createOrder(CreateOrderRequest request) {
-        User user = userRepository.findById(request.userId()).get();
+        User user = userRepository.findById(request.userId()).orElse(null);
         log.info("Creating order for user {}", user.getEmail());
 
         Order order = new Order();
@@ -42,7 +42,7 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING);
 
         for (CreateOrderRequest.Item itemRequest : request.items()) {
-            Product product = productRepository.findById(itemRequest.productId()).get();
+            Product product = productRepository.findById(itemRequest.productId()).orElse(null);
             reserveStock(product, itemRequest.quantity());
             order.getItems().add(new OrderItem(order, product, itemRequest.quantity(), itemRequest.unitPrice()));
         }

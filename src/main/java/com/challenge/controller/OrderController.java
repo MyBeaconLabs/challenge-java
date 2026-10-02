@@ -3,7 +3,6 @@ package com.challenge.controller;
 import com.challenge.dto.CreateOrderRequest;
 import com.challenge.dto.OrderResponse;
 import com.challenge.service.OrderService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +22,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createOrder(@Valid @RequestBody CreateOrderRequest request) {
+    public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
         try {
             OrderResponse order = OrderResponse.from(orderService.createOrder(request));
             return ResponseEntity.status(HttpStatus.CREATED).body(order);

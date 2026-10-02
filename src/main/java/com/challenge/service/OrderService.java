@@ -33,6 +33,8 @@ public class OrderService {
     }
 
     public Order createOrder(CreateOrderRequest request) {
+        validate(request);
+
         User user = userRepository.findById(request.userId()).orElse(null);
         log.info("Creating order for user {}", user.getEmail());
 
@@ -53,6 +55,20 @@ public class OrderService {
         order.setTotalAmount(BigDecimal.valueOf(total));
         order.setStatus(OrderStatus.CONFIRMED);
         return orderRepository.save(order);
+    }
+
+    private void validate(CreateOrderRequest request) {
+        if (request.userId() == null) {
+            throw new IllegalArgumentException("userId is required");
+        }
+        if (request.items() == null) {
+            throw new IllegalArgumentException("items are required");
+        }
+        for (CreateOrderRequest.Item item : request.items()) {
+            if (item.productId() == null || item.quantity() == null || item.unitPrice() == null) {
+                throw new IllegalArgumentException("productId, quantity and unitPrice are required");
+            }
+        }
     }
 
     @Transactional
